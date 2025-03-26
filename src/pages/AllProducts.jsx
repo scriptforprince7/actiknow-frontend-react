@@ -1,95 +1,143 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "../AllProducts.css";
 
-const AllProducts = () => {
-  const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [cartCount, setCartCount] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortOption, setSortOption] = useState("date");
+const AllTodos = () => {
+  const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingTodo, setEditingTodo] = useState(null);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
+
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    if (!token) {
+      setError("User not logged in");
+      setLoading(false);
+      navigate("/login");
+      return;
+    }
+
+    const fetchTodos = async () => {
       try {
-        const response = await axios.get("https://bharat-digital-backend.onrender.com/api/products/", {
-          headers: { Authorization: `Bearer ${process.env.REACT_APP_DJANGO_TOKEN}` },
+        const response = await axios.get("http://localhost:5000/api/todos", {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        setProducts(response.data);
-        setFilteredProducts(response.data); // Initially, show all products
+
+        setTodos(response.data);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error("Error fetching todos:", error);
+        setError("Failed to load todos");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchProducts();
-    updateCartCount();
-  }, []);
+    fetchTodos();
+  }, [token, navigate]);
 
-  const updateCartCount = () => {
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    const totalQuantity = cart.reduce((total, item) => total + item.quantity, 0);
-    setCartCount(totalQuantity);
+  const handleDeleteTodo = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/todos/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+
+      toast.success("Todo deleted successfully!", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } catch (err) {
+      console.error("Error deleting todo:", err);
+      setError("Failed to delete todo");
+
+      toast.error("Failed to delete todo!", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    }
   };
 
-  // 🌟 Live Search Logic
-  useEffect(() => {
-    const lowerCaseQuery = searchQuery.toLowerCase();
-    const filtered = products.filter((product) =>
-      product.name.toLowerCase().includes(lowerCaseQuery)
-    );
-    setFilteredProducts(filtered);
-  }, [searchQuery, products]);
-
-  // 🛠️ Sort Function
-  const handleSortChange = (e) => {
-    const option = e.target.value;
-    setSortOption(option);
-
-    const sortedProducts = [...filteredProducts].sort((a, b) => {
-      if (option === "price") return a.price - b.price;
-      if (option === "date") return new Date(b.date_added) - new Date(a.date_added);
-      return 0;
-    });
-
-    setFilteredProducts(sortedProducts);
+  const startEditing = (todo) => {
+    setEditingTodo(todo.id);
+    setEditedTitle(todo.title);
+    setEditedDescription(todo.description);
   };
+
+  const handleEditTodo = async (id) => {
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/api/todos/${id}`,
+        { title: editedTitle, description: editedDescription },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) => (todo.id === id ? response.data : todo))
+      );
+      setEditingTodo(null);
+      toast.success("Todo updated successfully!", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } catch (err) {
+      console.error("Error updating todo:", err);
+      toast.error("Failed to update todo!", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    }
+  };
+
+  if (loading) return <p>Loading todos...</p>;
+  if (error) return <p>{error}</p>;
 
   return (
-    <div className="products-container">
-      <div className="header">
-        <h1>All Todo's</h1>
-        {/* Add Dark Mode Toggle here */}
-        <Link to="/cart" className="cart-icon">
-          🛒 <span className="cart-count">{cartCount}</span>
-        </Link>
-      </div>
+    <div className="todos-container">
+      <h1>All Todos</h1>
+      <Link to="/dashboard/add-product" className="add-todo-btn">➕ Add New Todo</Link>
 
-      {/* 🔎 Search Bar */}
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search todo..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-
-        {/* 🛠️ Filter Dropdown */}
-        <select value={sortOption} onChange={handleSortChange}>
-          <option value="date">Sort by Date Added</option>
-          <option value="price">Sort by Price (Low to High)</option>
-        </select>
-      </div>
-
-      {/* Display Products */}
-      <div className="product-grid">
-        
-          <p>No todo found!</p>
-        
-      </div>
+      {todos.length === 0 ? (
+        <p>No todos found!</p>
+      ) : (
+        <ul>
+          {todos.map((todo) => (
+            <li key={todo.id}>
+              {editingTodo === todo.id ? (
+                <>
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    value={editedDescription}
+                    onChange={(e) => setEditedDescription(e.target.value)}
+                  />
+                  <button onClick={() => handleEditTodo(todo.id)}>💾 Save</button>
+                  <button onClick={() => setEditingTodo(null)}>❌ Cancel</button>
+                </>
+              ) : (
+                <>
+                  <strong>{todo.title}</strong>: {todo.description}
+                  <button onClick={() => startEditing(todo)}>✏️ Edit</button>
+                  <button onClick={() => handleDeleteTodo(todo.id)}>❌ Delete</button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
 
-export default AllProducts;
+export default AllTodos;

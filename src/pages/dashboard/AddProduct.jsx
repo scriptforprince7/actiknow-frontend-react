@@ -1,85 +1,61 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "../../../src/AddProduct.css"; // Styling file
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "../../../src/AddProduct.css";
 
 const TodoList = () => {
-    const [todos, setTodos] = useState([]);
-    const [title, setTitle] = useState("");
-    const [description, setDescription]  = useState("");
-    // just for testing
-    const user_id = 1; 
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const navigate = useNavigate();
 
-    useEffect(()=> {
-        fetchTodos();
-    }, []);
-
-    const fetchTodos = async () => {
-        try{
-            const response = await axios.get(`http://localhost:5000/api/todos/${user_id}`);
-            setTodos(response.data);
-        } catch (err) {
-            console.error("Error fetching todos", err);
-        }
-    };
-
-const handleAddTodo = async (e) => {
+  const handleAddTodo = async (e) => {
     e.preventDefault();
-    if(!title.trim()) return alert ("Title is required");
+    if (!title.trim()) return toast.warn("Title is required");
 
-    try{
-        await axios.post("http://localhost:5000/api/todos", {
-            user_id, title, description,
-        });
+    try {
+      await axios.post(
+        "http://localhost:5000/api/todos",
+        { title, description },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
 
-        setTitle("");
-        setDescription("");
-        fetchTodos();
+      toast.success("Todo added successfully!");
+      setTitle("");
+      setDescription("");
+      navigate("/dashboard/all-products");
     } catch (err) {
-        console.error("Error adding todos", err);
+      console.error("Error adding todo:", err.response?.data || err.message);
+      toast.error("❌ Failed to add todo");
     }
-};
+  };
 
-const handleToggleStatus = async (id, currentStatus) => {
-    try{
-        await axios.put(`http://localhost:5000/api/todos/${id}`, {
-            status: !currentStatus,
-        });
-    } catch (err) {
-        console.error("Error updating todo", err)
-    }
-};
-
-const handleDeleteTodo = async (id) => {
-    try{
-        await axios.delete(`http://localhost:5000/api/todos/${id}`);
-        fetchTodos();
-    } catch (err) {
-        console.error("Error deleteing todo:", err);
-    }
-};
-
-return(
+  return (
     <div className="container">
-        <h2>Todo List</h2>
+      <h2>Add New Todo</h2>
 
-        <form onSubmit={handleAddTodo}>
-            <input type="text"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            />
-            <input type="text" 
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-            />
-            <button type="submit">Add Todo</button>
-
-        </form>
+      <form onSubmit={handleAddTodo}>
+        <input
+          type="text"
+          placeholder="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+        <input
+          type="text"
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+        />
+        <button type="submit">Add Todo</button>
+      </form>
     </div>
-);
+  );
 };
 
-export default TodoList
+export default TodoList;

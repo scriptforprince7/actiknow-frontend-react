@@ -24,7 +24,7 @@ const Dashboard = () => {
 
           {/* Add Product tab */}
           <li className={location.pathname.includes("add-product") ? "active" : ""}>
-            <Link to="add-product">➕ Add Product</Link> {/* Relative path */}
+            <Link to="add-product">➕ Add Todo</Link> {/* Relative path */}
           </li>
         </ul>
       </div>

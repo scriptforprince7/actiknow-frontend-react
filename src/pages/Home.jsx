@@ -4,24 +4,29 @@ import { jwtDecode } from "jwt-decode";
 import "../Home.css";
 
 const Home = () => {
-  const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("");
   const navigate = useNavigate();
 
+  // Check if token exists and extract user info
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
+    const storedName = localStorage.getItem("name");
+
+    if (token && storedName) {
       try {
         const decoded = jwtDecode(token);
-        setUserEmail(decoded.email);
+        setUserName(storedName || decoded.email);
       } catch (error) {
         console.error("Failed to decode token:", error);
       }
     }
   }, []);
 
+  // Handle logout
   const handleLogout = () => {
     localStorage.removeItem("token");
-    setUserEmail("");
+    localStorage.removeItem("name");
+    setUserName("");
     navigate("/login");
   };
 
@@ -30,28 +35,28 @@ const Home = () => {
       <h1>Welcome to Actiknow Consulting</h1>
 
       {/* Avatar icon */}
-      {userEmail ? (
-        <div className="avatar-icon" onClick={handleLogout}>
+      {userName ? (
+        <div className="avatar-icon" onClick={handleLogout} title="Logout">
           🚪 Logout
         </div>
       ) : (
-        <Link to="/login" className="avatar-icon">
+        <Link to="/login" className="avatar-icon" title="Login">
           👤
         </Link>
       )}
 
-      {/* Display user email if logged in */}
-      {userEmail ? <h3>Hey, {userEmail}!</h3> : <h2>Welcome, Guest!</h2>}
+      {/* Display user name if logged in */}
+      {userName ? <h3>Hey, {userName}!</h3> : <h2>Welcome, Guest!</h2>}
 
       {/* Home buttons */}
       <div className="home-buttons">
         <Link to="/all-products">
           <button>All Todos</button>
         </Link>
-        <Link to="/dashboard/add-product">
+        {/* <Link to="/dashboard/add-product">
           <button>Create Todo</button>
-        </Link>
-        {userEmail && (
+        </Link> */}
+        {userName && (
           <Link to="/dashboard">
             <button>Dashboard</button>
           </Link>
